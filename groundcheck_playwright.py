@@ -26,7 +26,7 @@ load_dotenv()
 SIMILARITY_THRESHOLD = 50.0
 NAV_TIMEOUT_MS = 20000
 RESULT_WAIT_MS = 8000
-DEFAULT_CITY = os.getenv("CITY", "Alak")
+DEFAULT_CITY = "Kupang"
 
 
 class SearchResult(TypedDict):
@@ -163,7 +163,6 @@ async def geocode_name(
             "h1.DUwDvf, div[role='article']", timeout=RESULT_WAIT_MS
         )
     except PlaywrightTimeoutError:
-        # Continue anyway; sometimes Maps shows results without matching selectors yet.
         pass
     await page.wait_for_timeout(wait_ms)
     current_url = page.url
@@ -213,7 +212,9 @@ async def geocode_name(
         score = similarity_score(
             input_name, input_address, result["name"], result["address"]
         )
-        print(f"  [{idx}] {result['name'][:40]} - {result['address'][:40]}")
+        print(
+            f"  [{idx}] Nama: {result['name'][:40]} | Alamat: {result['address'][:40]}"
+        )
         print(f"      Similarity: {score:.1f}%")
         if score > best_score:
             best_score = score
@@ -235,7 +236,7 @@ async def geocode_name(
             "error": error_message,
         }
 
-    print(f"Best match: [{best_index}] with score {best_score:.1f}%")
+    print(f"Best match: [{best_index}] | Score: {best_score:.1f}%")
     print(f"   Nama: {best.get('name', '')}")
     print(f"   Alamat: {best.get('address', '')}")
 
@@ -243,9 +244,7 @@ async def geocode_name(
     if href:
         if href.startswith("/"):
             href = f"https://www.google.com{href}"
-        await page.goto(
-            href, wait_until="domcontentloaded", timeout=NAV_TIMEOUT_MS
-        )
+        await page.goto(href, wait_until="domcontentloaded", timeout=NAV_TIMEOUT_MS)
     else:
         await best["element"].click()
         await page.wait_for_timeout(wait_ms)
@@ -258,7 +257,7 @@ async def geocode_name(
     detail_url = page.url
     gmaps_name, gmaps_address = await get_detail_info(page)
     gmaps_status = await get_place_status(page)
-    print("Validating location is in city...")
+    print("Memvalidasi lokasi berada di kota target...")
     if city and not city_is_valid(gmaps_address, city):
         return {
             "lat": None,
@@ -295,7 +294,6 @@ async def geocode_address_only(
             "h1.DUwDvf, div[role='article']", timeout=RESULT_WAIT_MS
         )
     except PlaywrightTimeoutError:
-        # Continue anyway; sometimes Maps shows results without matching selectors yet.
         pass
     await page.wait_for_timeout(wait_ms)
     current_url = page.url
@@ -351,7 +349,9 @@ async def geocode_address_only(
             if input_name
             else similarity_score("", address, "", result["address"])
         )
-        print(f"  [{idx}] {result['name'][:40]} - {result['address'][:40]}")
+        print(
+            f"  [{idx}] Nama: {result['name'][:40]} | Alamat: {result['address'][:40]}"
+        )
         print(f"      Similarity: {score:.1f}%")
         if score > best_score:
             best_score = score
@@ -373,7 +373,7 @@ async def geocode_address_only(
             "error": error_message,
         }
 
-    print(f"Best match: [{best_index}] with score {best_score:.1f}%")
+    print(f"Best match: [{best_index}] | Score: {best_score:.1f}%")
     print(f"   Nama: {best.get('name', '')}")
     print(f"   Alamat: {best.get('address', '')}")
 
@@ -381,9 +381,7 @@ async def geocode_address_only(
     if href:
         if href.startswith("/"):
             href = f"https://www.google.com{href}"
-        await page.goto(
-            href, wait_until="domcontentloaded", timeout=NAV_TIMEOUT_MS
-        )
+        await page.goto(href, wait_until="domcontentloaded", timeout=NAV_TIMEOUT_MS)
     else:
         await best["element"].click()
         await page.wait_for_timeout(wait_ms)
@@ -396,7 +394,7 @@ async def geocode_address_only(
     detail_url = page.url
     gmaps_name, gmaps_address = await get_detail_info(page)
     gmaps_status = await get_place_status(page)
-    print("Validating location is in city...")
+    print("Memvalidasi lokasi berada di kota target...")
     if city and not city_is_valid(gmaps_address, city):
         return {
             "lat": None,
@@ -445,8 +443,8 @@ async def geocodeAllDirektoriUsaha(
         reader = csv.DictReader(infile)
         all_data = list(reader)
 
-    print(f"Mulai geocoding untuk {len(all_data)} data usaha...")
-    print(f"Parallel processing: {concurrency} concurrent requests\n")
+    print(f"Mulai geocoding untuk {len(all_data)} data usaha.")
+    print(f"Parallel processing: {concurrency} request paralel.\n")
 
     success_results = []
     failed_results = []
@@ -539,7 +537,8 @@ async def geocodeAllDirektoriUsaha(
                 }
                 success_results.append(success_data)
                 print(
-                    f"{progress} OK {nama_usaha[:40]} -> {result['lat']}, {result['lng']} "
+                    f"{progress} OK | {nama_usaha[:40]} -> "
+                    f"{result['lat']}, {result['lng']} "
                     f"(match: {result['score']:.1f}%)"
                 )
                 return True
@@ -558,7 +557,7 @@ async def geocodeAllDirektoriUsaha(
                 "geocode_method": "name_address",
             }
             failed_results.append(failed_data)
-            print(f"{progress} FAIL {nama_usaha[:40]} -> {failed_data['error']}")
+            print(f"{progress} FAIL | {nama_usaha[:40]} -> {failed_data['error']}")
             return False
         except Exception as error:
             processed_count += 1
@@ -577,7 +576,7 @@ async def geocodeAllDirektoriUsaha(
                 "geocode_method": "name_address",
             }
             failed_results.append(failed_data)
-            print(f"{progress} FAIL {nama_usaha[:40]} -> Error: {error}")
+            print(f"{progress} FAIL | {nama_usaha[:40]} -> Error: {error}")
             return False
         finally:
             await context.close()
@@ -609,11 +608,11 @@ async def geocodeAllDirektoriUsaha(
     save_progress()
 
     print("GEOCODING SELESAI")
-    print(f"Total data: {len(all_data)}")
-    print(f"Berhasil: {len(success_results)}")
-    print(f"Gagal: {len(failed_results)}")
+    print(f"Total data : {len(all_data)}")
+    print(f"Berhasil   : {len(success_results)}")
+    print(f"Gagal      : {len(failed_results)}")
     print(f"File sukses: {output_success}")
-    print(f"File gagal: {output_failed}")
+    print(f"File gagal : {output_failed}")
 
 
 async def retryGeocodeFailedByAddress(
@@ -632,9 +631,9 @@ async def retryGeocodeFailedByAddress(
         reader = csv.DictReader(infile)
         failed_data = list(reader)
 
-    print(f"Retry geocoding untuk {len(failed_data)} data yang gagal...")
-    print("Strategi: Menggunakan ALAMAT saja (tanpa nama usaha)")
-    print(f"Parallel processing: {concurrency} concurrent requests\n")
+    print(f"Retry geocoding untuk {len(failed_data)} data yang gagal.")
+    print("Strategi: Menggunakan ALAMAT saja (tanpa nama usaha).")
+    print(f"Parallel processing: {concurrency} request paralel.\n")
 
     retry_success_results = []
     retry_failed_results = []
@@ -739,7 +738,8 @@ async def retryGeocodeFailedByAddress(
                 }
                 retry_success_results.append(success_data)
                 print(
-                    f"{progress} OK {nama_usaha[:40]} -> {result['lat']}, {result['lng']} "
+                    f"{progress} OK | {nama_usaha[:40]} -> "
+                    f"{result['lat']}, {result['lng']} "
                     f"(match: {result['score']:.1f}%) [by address]"
                 )
                 return True
@@ -758,7 +758,7 @@ async def retryGeocodeFailedByAddress(
                 "geocode_method": "address_only",
             }
             retry_failed_results.append(failed_data_item)
-            print(f"{progress} FAIL {nama_usaha[:40]} -> {failed_data_item['error']}")
+            print(f"{progress} FAIL | {nama_usaha[:40]} -> {failed_data_item['error']}")
             return False
         except Exception as error:
             processed_count += 1
@@ -777,7 +777,7 @@ async def retryGeocodeFailedByAddress(
                 "geocode_method": "address_only",
             }
             retry_failed_results.append(failed_data_item)
-            print(f"{progress} FAIL {nama_usaha[:40]} -> Error: {error}")
+            print(f"{progress} FAIL | {nama_usaha[:40]} -> Error: {error}")
             return False
         finally:
             await context.close()
@@ -810,10 +810,10 @@ async def retryGeocodeFailedByAddress(
 
     print("RETRY GEOCODING SELESAI")
     print(f"Total data retry: {len(failed_data)}")
-    print(f"Berhasil: {len(retry_success_results)}")
-    print(f"Tetap gagal: {len(retry_failed_results)}")
+    print(f"Berhasil        : {len(retry_success_results)}")
+    print(f"Tetap gagal     : {len(retry_failed_results)}")
     print(f"File retry sukses: {output_retry_success}")
-    print(f"File retry gagal: {output_retry_failed}")
+    print(f"File retry gagal : {output_retry_failed}")
     total_success = len(existing_success_results) + len(retry_success_results)
     print(f"File sukses update: {output_success} ({total_success} total)")
 
@@ -914,7 +914,7 @@ async def main() -> None:
                     continue
 
                 query = f"{name} {city}".strip() if city else name
-                print(f"[{index}/{total}] {query[:60]}")
+                print(f"[{index}/{total}] Mencari: {query[:60]}")
 
                 try:
                     result = await geocode_name(
